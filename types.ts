@@ -6,6 +6,9 @@ export enum GameState {
   GAMEOVER
 }
 
+export type Language = 'en' | 'he' | 'zh' | 'hi' | 'de' | 'es' | 'fr';
+export type FontSize = 'small' | 'medium' | 'large';
+
 export interface Jumper {
   id: number;
   x: number;
@@ -80,4 +83,6 @@ export interface PowerUp {
 export interface GameSettings {
   isMultiplayer: boolean;
   firefighterFocus: number;
+  language: Language;
+  fontSize: FontSize;
 }

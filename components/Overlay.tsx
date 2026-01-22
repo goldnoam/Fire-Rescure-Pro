@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { GameState, GameSettings } from '../types';
+import { GameState, GameSettings, Language, FontSize } from '../types';
 
 interface OverlayProps {
   gameState: GameState;
@@ -9,39 +9,58 @@ interface OverlayProps {
   lives: number;
   settings: GameSettings;
   theme: 'dark' | 'light';
+  t: any;
   onStart: (multi: boolean) => void;
   onRestart: () => void;
   onReset: () => void;
   onPause: () => void;
   onSetSettings: React.Dispatch<React.SetStateAction<GameSettings>>;
   onToggleTheme: () => void;
+  onSpeak: (text: string) => void;
 }
 
 const Overlay: React.FC<OverlayProps> = ({ 
-  gameState, score, level, lives, settings, theme,
-  onStart, onRestart, onReset, onPause, onSetSettings, onToggleTheme 
+  gameState, score, level, lives, settings, theme, t,
+  onStart, onRestart, onReset, onPause, onSetSettings, onToggleTheme, onSpeak 
 }) => {
+  const languages: { code: Language; label: string }[] = [
+    { code: 'he', label: 'עברית' },
+    { code: 'en', label: 'English' },
+    { code: 'zh', label: '中文' },
+    { code: 'hi', label: 'हिन्दी' },
+    { code: 'de', label: 'Deutsch' },
+    { code: 'es', label: 'Español' },
+    { code: 'fr', label: 'Français' },
+  ];
+
+  const fontSizes: FontSize[] = ['small', 'medium', 'large'];
+
   if (gameState === GameState.PLAYING) {
     return (
       <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none text-white font-bold drop-shadow-md z-30">
         <div className="flex flex-col gap-1">
-          <div className="bg-black/50 px-3 py-1 rounded">Score: {score}</div>
-          <div className="bg-black/50 px-3 py-1 rounded text-blue-300">Level: {level}</div>
+          <div className="bg-black/60 px-3 py-1 rounded backdrop-blur-sm" aria-live="polite">
+            {t.score.replace('{val}', score)}
+          </div>
+          <div className="bg-black/60 px-3 py-1 rounded text-blue-300 backdrop-blur-sm">
+            {t.level.replace('{val}', level)}
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1 pointer-events-auto">
-          <div className="flex gap-1 mb-2">
+        <div className="flex flex-col items-end gap-2 pointer-events-auto">
+          <div className="flex gap-1" role="img" aria-label={`${lives} lives remaining`}>
             {Array.from({ length: 5 }).map((_, i) => (
               <div 
                 key={i} 
-                className={`w-4 h-4 rounded-full ${i < lives ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)]' : 'bg-neutral-700'}`}
+                className={`w-4 h-4 rounded-full transition-all duration-300 ${i < lives ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-neutral-800'}`}
               />
             ))}
           </div>
           <button 
             onClick={onPause}
-            className="bg-black/50 hover:bg-neutral-800 p-2 rounded text-xs transition-colors"
+            className="bg-black/60 hover:bg-neutral-800 p-2 rounded text-xs transition-colors backdrop-blur-sm"
+            aria-label={t.paused}
           >
-            ⏸ Pause
+            ⏸ {t.paused}
           </button>
         </div>
       </div>
@@ -49,45 +68,89 @@ const Overlay: React.FC<OverlayProps> = ({
   }
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className={`${theme === 'dark' ? 'bg-neutral-800 border-neutral-600' : 'bg-white border-neutral-300 text-neutral-900'} border-2 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl flex flex-col gap-6`}>
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className={`${theme === 'dark' ? 'bg-[#1e1e1e] border-neutral-700 text-white' : 'bg-white border-neutral-200 text-neutral-900'} border-2 p-8 rounded-3xl max-w-lg w-full text-center shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col gap-5 overflow-y-auto max-h-[95vh]`}>
         
         {gameState === GameState.MENU && (
           <>
-            <div className="flex justify-between items-center mb-2">
-              <button onClick={onToggleTheme} className="p-2 rounded-full hover:bg-neutral-700/20 text-xl">
+            <div className="flex justify-between items-center">
+              <button 
+                onClick={onToggleTheme} 
+                className="p-3 rounded-xl hover:bg-neutral-700/20 text-2xl"
+                aria-label="Toggle Theme"
+              >
                 {theme === 'dark' ? '☀️' : '🌙'}
               </button>
-              <h1 className="text-4xl font-black text-orange-500 uppercase tracking-tighter">Fire Rescue Pro</h1>
-              <div className="w-8" />
+              <h1 className="text-4xl font-black text-orange-500 uppercase tracking-tighter drop-shadow-lg">{t.title}</h1>
+              <div className="w-10" />
             </div>
             
-            <p className={theme === 'dark' ? 'text-neutral-400' : 'text-neutral-600'}>הצילו את האזרחים מהבניינים הבוערים! העבירו אותם לאמבולנס במהירות.</p>
+            <p className={`text-sm ${theme === 'dark' ? 'text-neutral-400' : 'text-neutral-600'}`}>{t.subtitle}</p>
             
-            <div className="space-y-4">
-              <div className={`${theme === 'dark' ? 'bg-neutral-700/50' : 'bg-neutral-100'} p-4 rounded-lg`}>
-                <label className="text-sm font-semibold mb-2 block">מיקוד צוותים: {settings.firefighterFocus}% כיבוי</label>
-                <input 
-                  type="range" 
-                  min="0" max="100" 
-                  value={settings.firefighterFocus}
-                  onChange={(e) => onSetSettings(s => ({ ...s, firefighterFocus: parseInt(e.target.value) }))}
-                  className="w-full accent-orange-500"
-                />
+            <div className="space-y-4 text-right">
+              {/* Settings Section */}
+              <div className={`${theme === 'dark' ? 'bg-neutral-800/50' : 'bg-neutral-100'} p-4 rounded-2xl space-y-4`}>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase opacity-60">🌐 Language / שפה</label>
+                  <div className="flex flex-wrap gap-2">
+                    {languages.map(lang => (
+                      <button 
+                        key={lang.code}
+                        onClick={() => {
+                          onSetSettings(s => ({ ...s, language: lang.code }));
+                          onSpeak(lang.label);
+                        }}
+                        className={`px-3 py-1 text-xs rounded-full border transition-all ${settings.language === lang.code ? 'bg-orange-600 border-orange-600 text-white' : 'border-neutral-500 hover:border-orange-500'}`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase opacity-60">📏 Font Size / גודל גופן</label>
+                  <div className="flex gap-2">
+                    {fontSizes.map(size => (
+                      <button 
+                        key={size}
+                        onClick={() => {
+                          onSetSettings(s => ({ ...s, fontSize: size }));
+                          onSpeak(size);
+                        }}
+                        className={`flex-1 py-1 text-xs rounded-full border transition-all capitalize ${settings.fontSize === size ? 'bg-blue-600 border-blue-600 text-white' : 'border-neutral-500 hover:border-blue-500'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase opacity-60">⚙️ {t.fireFocus.replace('{val}', settings.firefighterFocus)}</label>
+                  <input 
+                    type="range" 
+                    min="0" max="100" 
+                    value={settings.firefighterFocus}
+                    onChange={(e) => onSetSettings(s => ({ ...s, firefighterFocus: parseInt(e.target.value) }))}
+                    className="w-full h-2 bg-neutral-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    aria-label="Firefighter Focus Slider"
+                  />
+                </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button 
                   onClick={() => onStart(false)}
-                  className="flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold transition-all transform active:scale-95"
+                  className="flex-1 bg-green-600 hover:bg-green-500 text-white py-4 rounded-2xl font-black text-lg transition-all transform active:scale-95 shadow-xl"
                 >
-                  שחקן יחיד
+                  {t.singlePlayer}
                 </button>
                 <button 
                   onClick={() => onStart(true)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-all transform active:scale-95"
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-lg transition-all transform active:scale-95 shadow-xl"
                 >
-                  זוג שחקנים
+                  {t.multiPlayer}
                 </button>
               </div>
             </div>
@@ -96,25 +159,25 @@ const Overlay: React.FC<OverlayProps> = ({
 
         {gameState === GameState.PAUSED && (
           <>
-            <h2 className="text-3xl font-bold">המשחק נעצר</h2>
+            <h2 className="text-4xl font-black text-orange-500">{t.paused}</h2>
             <div className="flex flex-col gap-3">
               <button 
                 onClick={onPause}
-                className="bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-xl font-bold text-xl"
+                className="bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-2xl font-black text-2xl shadow-lg"
               >
-                המשך
+                {t.resume}
               </button>
               <button 
                 onClick={onReset}
-                className="bg-neutral-600 hover:bg-neutral-500 text-white py-3 rounded-xl font-bold"
+                className="bg-neutral-600 hover:bg-neutral-500 text-white py-4 rounded-2xl font-black text-lg"
               >
-                אפס משחק
+                {t.reset}
               </button>
               <button 
                 onClick={onRestart}
-                className="text-neutral-500 hover:text-orange-500 transition-colors"
+                className="text-neutral-500 hover:text-orange-500 font-bold transition-colors mt-4"
               >
-                חזרה לתפריט
+                {t.backToMenu}
               </button>
             </div>
           </>
@@ -122,17 +185,23 @@ const Overlay: React.FC<OverlayProps> = ({
 
         {gameState === GameState.GAMEOVER && (
           <>
-            <h2 className="text-4xl font-bold text-red-500">המשחק נגמר</h2>
-            <div className={`${theme === 'dark' ? 'bg-neutral-900/50' : 'bg-neutral-100'} p-6 rounded-xl space-y-2`}>
-              <p className="text-neutral-400">ציון סופי</p>
-              <p className="text-5xl font-black">{score}</p>
-              <p className="text-sm text-blue-400">הגעת לשלב {level}</p>
+            <h2 className="text-5xl font-black text-red-600 tracking-tighter italic">{t.gameOver}</h2>
+            <div className={`${theme === 'dark' ? 'bg-neutral-900' : 'bg-neutral-100'} p-8 rounded-3xl border-2 border-orange-500/20`}>
+              <p className="text-neutral-500 uppercase font-bold text-xs mb-1">{t.finalScore}</p>
+              <p className="text-7xl font-black drop-shadow-lg">{score}</p>
+              <p className="text-blue-500 font-bold mt-2">{t.level.replace('{val}', level)}</p>
             </div>
             <button 
-              onClick={onRestart}
-              className="bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-xl font-bold text-xl shadow-lg"
+              onClick={() => onStart(settings.isMultiplayer)}
+              className="bg-orange-600 hover:bg-orange-500 text-white py-5 rounded-2xl font-black text-2xl shadow-[0_10px_20px_rgba(234,88,12,0.3)] transition-all transform active:scale-95"
             >
-              נסה שוב
+              {t.tryAgain}
+            </button>
+            <button 
+              onClick={onRestart}
+              className="text-neutral-500 hover:text-orange-500 font-bold"
+            >
+              {t.backToMenu}
             </button>
           </>
         )}

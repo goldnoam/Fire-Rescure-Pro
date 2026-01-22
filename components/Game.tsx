@@ -266,9 +266,16 @@ const Game: React.FC<GameProps> = ({
     const processPlayer = (idx: number, leftKey: string, rightKey: string, actionKey: string) => {
       const s = stretchersRef.current[idx];
       const speed = activeEffectsRef.current.speed > 0 ? STRETCHER_SPEED * 1.6 : STRETCHER_SPEED;
-      if (keysRef.current.has(leftKey) || (idx === 0 && keysRef.current.has('KeyA'))) s.x = Math.max(0, s.x - speed);
-      if (keysRef.current.has(rightKey) || (idx === 0 && keysRef.current.has('KeyD'))) s.x = Math.min(CANVAS_WIDTH - s.width, s.x + speed);
-      if (keysRef.current.has(actionKey) || (idx === 0 && (keysRef.current.has('KeyW') || keysRef.current.has('KeyS')))) {
+      
+      // Determine movement based on keysRef
+      const moveLeft = keysRef.current.has(leftKey) || (idx === 0 && keysRef.current.has('ArrowLeft'));
+      const moveRight = keysRef.current.has(rightKey) || (idx === 0 && keysRef.current.has('ArrowRight'));
+      const sprayWater = keysRef.current.has(actionKey) || (idx === 0 && keysRef.current.has('Space'));
+
+      if (moveLeft) s.x = Math.max(0, s.x - speed);
+      if (moveRight) s.x = Math.min(CANVAS_WIDTH - s.width, s.x + speed);
+      
+      if (sprayWater) {
         const count = activeEffectsRef.current.water > 0 ? 8 : 4;
         for (let i = 0; i < count; i++) {
           waterParticlesRef.current.push({
@@ -278,14 +285,16 @@ const Game: React.FC<GameProps> = ({
           });
         }
       }
+
       if (s.x + s.width > AMBULANCE_X && s.occupants > 0) {
         internalScoreRef.current += s.occupants * (15 + internalLevelRef.current * 5);
         setScore(internalScoreRef.current);
         s.occupants = 0;
       }
     };
-    processPlayer(0, 'ArrowLeft', 'ArrowRight', 'Space');
-    if (settings.isMultiplayer) processPlayer(1, 'KeyA', 'KeyD', 'ShiftLeft');
+
+    processPlayer(0, 'KeyA', 'KeyD', 'KeyW'); // WASD support as per spec for desktop/mobile consistency
+    if (settings.isMultiplayer) processPlayer(1, 'ArrowLeft', 'ArrowRight', 'Space');
 
     powerUpsRef.current.forEach(p => {
       p.y += p.vy;
@@ -367,17 +376,38 @@ const Game: React.FC<GameProps> = ({
       const destroyed = b.isFloorDestroyed[f];
       
       if (!destroyed) {
+        let offsetX = 0;
+        let offsetY = 0;
+        if (fireLevel > DAMAGE_THRESHOLD) {
+          const trembleAmount = (fireLevel - DAMAGE_THRESHOLD) / 8;
+          offsetX = (Math.random() - 0.5) * trembleAmount;
+          offsetY = (Math.random() - 0.5) * trembleAmount;
+        }
+
         ctx.fillStyle = b.color;
-        ctx.fillRect(b.x, fy, b.width, floorHeight);
+        ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
+        
         if (damage > 0) {
           ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.8, damage / 100)})`;
-          ctx.fillRect(b.x, fy, b.width, floorHeight);
+          ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
+          
+          if (damage > 40) {
+            ctx.strokeStyle = `rgba(0, 0, 0, ${damage / 150})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(b.x + offsetX + 10, fy + offsetY + 10);
+            ctx.lineTo(b.x + offsetX + 30, fy + offsetY + 40);
+            ctx.moveTo(b.x + b.width + offsetX - 10, fy + offsetY + 10);
+            ctx.lineTo(b.x + b.width + offsetX - 40, fy + offsetY + 50);
+            ctx.stroke();
+          }
         }
+
         const winXPos = [b.x + 20, b.x + b.width - 50];
         winXPos.forEach(wx => {
           ctx.fillStyle = '#0a0a0a';
-          ctx.fillRect(wx, fy + 20, 30, 40);
-          if (fireLevel > 5) drawFire(ctx, wx + 15, fy + 35, 45, 40, fireLevel, time);
+          ctx.fillRect(wx + offsetX, fy + 20 + offsetY, 30, 40);
+          if (fireLevel > 5) drawFire(ctx, wx + 15 + offsetX, fy + 35 + offsetY, 45, 40, fireLevel, time);
         });
       } else {
         ctx.fillStyle = '#222';

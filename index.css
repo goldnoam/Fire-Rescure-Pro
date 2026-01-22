@@ -1,0 +1,25 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --game-font-scale: 1;
+}
+
+body {
+  font-size: calc(1rem * var(--game-font-scale));
+}
+
+.font-size-small { --game-font-scale: 0.85; }
+.font-size-medium { --game-font-scale: 1; }
+.font-size-large { --game-font-scale: 1.25; }
+
+/* Custom Focus Rings for Accessibility */
+*:focus-visible {
+  outline: 3px solid #f97316;
+  outline-offset: 2px;
+}
+
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
