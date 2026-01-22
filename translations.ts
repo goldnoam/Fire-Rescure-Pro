@@ -8,6 +8,7 @@ export const translations = {
     fireFocus: "מיקוד צוותים: {val}% כיבוי",
     score: "ציון: {val}",
     level: "שלב: {val}",
+    goalProgress: "הצלות: {current}/{goal}",
     gameOver: "המשחק נגמר",
     finalScore: "ציון סופי",
     tryAgain: "נסה שוב",
@@ -16,6 +17,10 @@ export const translations = {
     reset: "אפס משחק",
     backToMenu: "חזרה לתפריט",
     water: "מים",
+    controls: "מקשים והוראות",
+    p1Keys: "שחקן 1: WASD או חיצים",
+    p2Keys: "שחקן 2: חיצים ורווח",
+    goal: "מטרה: הצילו אנשים עם האלונקה וכבו את האש בעזרת המים!",
     dir: "rtl"
   },
   en: {
@@ -26,6 +31,7 @@ export const translations = {
     fireFocus: "Team Focus: {val}% Firefighting",
     score: "Score: {val}",
     level: "Level: {val}",
+    goalProgress: "Rescues: {current}/{goal}",
     gameOver: "Game Over",
     finalScore: "Final Score",
     tryAgain: "Try Again",
@@ -34,6 +40,10 @@ export const translations = {
     reset: "Reset Game",
     backToMenu: "Back to Menu",
     water: "Water",
+    controls: "Controls & Instructions",
+    p1Keys: "P1: WASD or Arrows",
+    p2Keys: "P2: Arrows & Space",
+    goal: "Goal: Rescue people with your stretcher and put out fires with water!",
     dir: "ltr"
   },
   zh: {
@@ -44,6 +54,7 @@ export const translations = {
     fireFocus: "团队重点：{val}% 灭火",
     score: "分数：{val}",
     level: "等级：{val}",
+    goalProgress: "救援: {current}/{goal}",
     gameOver: "游戏结束",
     finalScore: "最终分数",
     tryAgain: "再试一次",
@@ -52,6 +63,10 @@ export const translations = {
     reset: "重置游戏",
     backToMenu: "返回菜单",
     water: "水",
+    controls: "控制与说明",
+    p1Keys: "P1: WASD 或 方向键",
+    p2Keys: "P2: 方向键 和 空格键",
+    goal: "目标：用担架营救人员，用水扑灭大火！",
     dir: "ltr"
   },
   hi: {
@@ -62,6 +77,7 @@ export const translations = {
     fireFocus: "टीम फोकस: {val}% अग्निशमन",
     score: "स्कोर: {val}",
     level: "स्तर: {val}",
+    goalProgress: "बचाव: {current}/{goal}",
     gameOver: "खेल खत्म",
     finalScore: "अंतिम स्कोर",
     tryAgain: "फिर कोशिश करें",
@@ -70,6 +86,10 @@ export const translations = {
     reset: "खेल रीसेट करें",
     backToMenu: "मेन्यू पर वापस",
     water: "पानी",
+    controls: "नियंत्रण और निर्देश",
+    p1Keys: "P1: WASD या तीर कुंजियाँ",
+    p2Keys: "P2: तीर कुंजियाँ और स्पेस",
+    goal: "लक्ष्य: स्ट्रेचर से लोगों को बचाएं और पानी से आग बुषाएं!",
     dir: "ltr"
   },
   de: {
@@ -80,6 +100,7 @@ export const translations = {
     fireFocus: "Team-Fokus: {val}% Brandbekämpfung",
     score: "Punktzahl: {val}",
     level: "Level: {val}",
+    goalProgress: "Rettungen: {current}/{goal}",
     gameOver: "Spiel vorbei",
     finalScore: "Endstand",
     tryAgain: "Nochmal",
@@ -88,6 +109,10 @@ export const translations = {
     reset: "Spiel zurücksetzen",
     backToMenu: "Hauptmenü",
     water: "Wasser",
+    controls: "Steuerung & Anleitung",
+    p1Keys: "P1: WASD oder Pfeiltasten",
+    p2Keys: "P2: Pfeiltasten & Leertaste",
+    goal: "Ziel: Rette Menschen mit der Trage und lösche Feuer mit Wasser!",
     dir: "ltr"
   },
   es: {
@@ -98,6 +123,7 @@ export const translations = {
     fireFocus: "Enfoque del equipo: {val}% Extinción",
     score: "Puntuación: {val}",
     level: "Nivel: {val}",
+    goalProgress: "Rescates: {current}/{goal}",
     gameOver: "Juego terminado",
     finalScore: "Puntuación final",
     tryAgain: "Intentar de nuevo",
@@ -106,6 +132,10 @@ export const translations = {
     reset: "Reiniciar juego",
     backToMenu: "Volver al menú",
     water: "Agua",
+    controls: "Controles e Instrucciones",
+    p1Keys: "P1: WASD o Flechas",
+    p2Keys: "P2: Flechas y Espacio",
+    goal: "Objetivo: ¡Rescata personas con la camilla y apaga fuegos con agua!",
     dir: "ltr"
   },
   fr: {
@@ -116,6 +146,7 @@ export const translations = {
     fireFocus: "Focus équipe : {val}% Lutte incendie",
     score: "Score : {val}",
     level: "Niveau : {val}",
+    goalProgress: "Sauvetages : {current}/{goal}",
     gameOver: "Fin de partie",
     finalScore: "Score final",
     tryAgain: "Réessayer",
@@ -124,6 +155,10 @@ export const translations = {
     reset: "Réinitialiser",
     backToMenu: "Retour au menu",
     water: "Eau",
+    controls: "Commandes & Instructions",
+    p1Keys: "P1 : WASD ou Flèches",
+    p2Keys: "P2 : Flèches & Espace",
+    goal: "Objectif : Sauvez les gens avec le brancard et éteignez les incendies !",
     dir: "ltr"
   }
 };

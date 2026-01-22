@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameState, GameSettings, Language, FontSize } from '../types';
 
 interface OverlayProps {
@@ -23,6 +23,14 @@ const Overlay: React.FC<OverlayProps> = ({
   gameState, score, level, lives, settings, theme, t,
   onStart, onRestart, onReset, onPause, onSetSettings, onToggleTheme, onSpeak 
 }) => {
+  const [goalData, setGoalData] = useState({ current: 0, goal: 3 });
+
+  useEffect(() => {
+    const handleGoalUpdate = (e: any) => setGoalData(e.detail);
+    window.addEventListener('update-goal', handleGoalUpdate);
+    return () => window.removeEventListener('update-goal', handleGoalUpdate);
+  }, []);
+
   const languages: { code: Language; label: string }[] = [
     { code: 'he', label: 'עברית' },
     { code: 'en', label: 'English' },
@@ -44,6 +52,9 @@ const Overlay: React.FC<OverlayProps> = ({
           </div>
           <div className="bg-black/60 px-3 py-1 rounded text-blue-300 backdrop-blur-sm">
             {t.level.replace('{val}', level)}
+          </div>
+          <div className="bg-black/60 px-3 py-1 rounded text-green-400 backdrop-blur-sm text-xs mt-1">
+            {t.goalProgress.replace('{current}', goalData.current).replace('{goal}', goalData.goal)}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 pointer-events-auto">
@@ -88,9 +99,17 @@ const Overlay: React.FC<OverlayProps> = ({
             <p className={`text-sm ${theme === 'dark' ? 'text-neutral-400' : 'text-neutral-600'}`}>{t.subtitle}</p>
             
             <div className="space-y-4 text-right">
-              {/* Settings Section */}
+              <div className={`${theme === 'dark' ? 'bg-orange-600/10 border-orange-500/20' : 'bg-orange-50 border-orange-200'} border p-4 rounded-2xl text-start`}>
+                <h3 className="text-sm font-bold text-orange-500 mb-2">🎮 {t.controls}</h3>
+                <p className="text-xs mb-1 font-medium">{t.goal}</p>
+                <ul className="text-xs space-y-1 opacity-80 list-disc list-inside">
+                  <li>{t.p1Keys}</li>
+                  <li>{t.p2Keys}</li>
+                </ul>
+              </div>
+
               <div className={`${theme === 'dark' ? 'bg-neutral-800/50' : 'bg-neutral-100'} p-4 rounded-2xl space-y-4`}>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 text-start">
                   <label className="text-xs font-bold uppercase opacity-60">🌐 Language / שפה</label>
                   <div className="flex flex-wrap gap-2">
                     {languages.map(lang => (
@@ -108,7 +127,7 @@ const Overlay: React.FC<OverlayProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 text-start">
                   <label className="text-xs font-bold uppercase opacity-60">📏 Font Size / גודל גופן</label>
                   <div className="flex gap-2">
                     {fontSizes.map(size => (
@@ -126,7 +145,7 @@ const Overlay: React.FC<OverlayProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 text-start">
                   <label className="text-xs font-bold uppercase opacity-60">⚙️ {t.fireFocus.replace('{val}', settings.firefighterFocus)}</label>
                   <input 
                     type="range" 

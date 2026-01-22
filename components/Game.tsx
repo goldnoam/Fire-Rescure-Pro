@@ -6,7 +6,7 @@ import {
 import { 
   CANVAS_WIDTH, CANVAS_HEIGHT, BUILDINGS_DATA, STRETCHER_WIDTH, 
   STRETCHER_HEIGHT, JUMPER_SIZE, GRAVITY, BOUNCE_FACTOR, 
-  STRETCHER_SPEED, FIRE_GROWTH_RATE, STAGE_DURATION, 
+  STRETCHER_SPEED, FIRE_GROWTH_RATE, 
   AMBULANCE_X, AMBULANCE_WIDTH, INITIAL_LIVES, POWERUP_DURATION, POWERUP_SPAWN_CHANCE 
 } from '../constants';
 
@@ -35,7 +35,7 @@ const Game: React.FC<GameProps> = ({
   
   const initBuildings = () => BUILDINGS_DATA.map(b => ({ 
     ...b, 
-    windowFireLevels: new Array(b.floors).fill(0).map(() => Math.random() < 0.2 ? 20 + Math.random() * 10 : 0),
+    windowFireLevels: new Array(b.floors).fill(0).map(() => Math.random() < 0.2 ? 10 + Math.random() * 5 : 0),
     structuralDamage: new Array(b.floors).fill(0),
     isFloorDestroyed: new Array(b.floors).fill(false),
     style: b.style as any
@@ -59,11 +59,14 @@ const Game: React.FC<GameProps> = ({
   });
 
   const keysRef = useRef<Set<string>>(new Set());
-  const timerRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const internalLivesRef = useRef<number>(INITIAL_LIVES);
   const internalLevelRef = useRef<number>(1);
   const internalScoreRef = useRef<number>(0);
+  
+  // Rescue progression
+  const rescuedInLevelRef = useRef<number>(0);
+  const getLevelGoal = (lvl: number) => (lvl === 1 ? 3 : 3 + (lvl - 1) * 7);
 
   useEffect(() => {
     if (gameState === GameState.PLAYING) {
@@ -78,13 +81,18 @@ const Game: React.FC<GameProps> = ({
       rubbleParticlesRef.current = [];
       powerUpsRef.current = [];
       activeEffectsRef.current = { speed: 0, water: 0, shield: 0, extinguisher: 0 };
-      timerRef.current = 0;
       internalLivesRef.current = INITIAL_LIVES;
       internalLevelRef.current = 1;
       internalScoreRef.current = 0;
+      rescuedInLevelRef.current = 0;
       setLives(INITIAL_LIVES);
       setLevel(1);
       setScore(0);
+      
+      // Dispatch initial goal
+      window.dispatchEvent(new CustomEvent('update-goal', { 
+        detail: { current: 0, goal: getLevelGoal(1) } 
+      }));
     }
   }, [gameState, settings.isMultiplayer, setLives, setLevel, setScore]);
 
@@ -121,14 +129,14 @@ const Game: React.FC<GameProps> = ({
 
   const spawnJumper = useCallback(() => {
     const burningBuildings = buildingsRef.current.filter(b => 
-      b.windowFireLevels.some((lvl, idx) => lvl > 15 && !b.isFloorDestroyed[idx])
+      b.windowFireLevels.some((lvl, idx) => lvl > 10 && !b.isFloorDestroyed[idx])
     );
     if (burningBuildings.length === 0) return;
 
     const building = burningBuildings[Math.floor(Math.random() * burningBuildings.length)];
     const bIndex = buildingsRef.current.indexOf(building);
     const validFloors = building.windowFireLevels
-      .map((lvl, idx) => (lvl > 15 && !building.isFloorDestroyed[idx]) ? idx : -1)
+      .map((lvl, idx) => (lvl > 10 && !building.isFloorDestroyed[idx]) ? idx : -1)
       .filter(idx => idx !== -1);
     
     if (validFloors.length === 0) return;
@@ -142,8 +150,8 @@ const Game: React.FC<GameProps> = ({
       targetY: y,
       buildingIndex: bIndex,
       floor: floorIdx + 1,
-      vx: (Math.random() - 0.5) * (1.5 + internalLevelRef.current * 0.1),
-      vy: -1.5 - (internalLevelRef.current * 0.05),
+      vx: (Math.random() - 0.5) * (1.5 + internalLevelRef.current * 0.2),
+      vy: -1.5 - (internalLevelRef.current * 0.1),
       state: 'jumping',
       color: `hsla(${Math.random() * 360}, 80%, 75%, 0.9)`,
       hasShield: activeEffectsRef.current.shield > 0
@@ -155,11 +163,11 @@ const Game: React.FC<GameProps> = ({
       rubbleParticlesRef.current.push({
         x: x + Math.random() * width,
         y: y + Math.random() * 20,
-        vx: (Math.random() - 0.5) * 10,
-        vy: -4 - Math.random() * 8,
+        vx: (Math.random() - 0.5) * 12,
+        vy: -5 - Math.random() * 10,
         rotation: Math.random() * Math.PI * 2,
-        vr: (Math.random() - 0.5) * 0.6,
-        size: 6 + Math.random() * 18,
+        vr: (Math.random() - 0.5) * 0.8,
+        size: 8 + Math.random() * 20,
         life: 1.0
       });
     }
@@ -179,8 +187,6 @@ const Game: React.FC<GameProps> = ({
   const update = useCallback((deltaTime: number) => {
     if (gameState !== GameState.PLAYING) return;
 
-    timerRef.current += deltaTime;
-
     Object.keys(activeEffectsRef.current).forEach((key) => {
       const k = key as PowerUpType;
       if (activeEffectsRef.current[k] > 0) {
@@ -188,16 +194,11 @@ const Game: React.FC<GameProps> = ({
       }
     });
 
-    if (timerRef.current > STAGE_DURATION) {
-      timerRef.current = 0;
-      internalLevelRef.current += 1;
-      setLevel(internalLevelRef.current);
-    }
-
-    const difficultyScaling = 0.5 + (internalLevelRef.current * 0.5);
+    // Difficulty Scaling: Quadratic increase for faster difficulty ramp
+    const difficultyScaling = 0.4 + (Math.pow(internalLevelRef.current, 2) * 0.2);
 
     buildingsRef.current.forEach(b => {
-      const growthModifier = (1 - (settings.firefighterFocus / 100)) * 1.4;
+      const growthModifier = (1 - (settings.firefighterFocus / 100)) * 1.5;
       b.windowFireLevels.forEach((lvl, i) => {
         if (b.isFloorDestroyed[i]) {
           b.windowFireLevels[i] = Math.max(0, lvl - 0.1);
@@ -207,7 +208,7 @@ const Game: React.FC<GameProps> = ({
         let change = lvl > 0 ? FIRE_GROWTH_RATE * difficultyScaling * growthModifier : 0;
         if (i > 0) {
           const heatBelow = b.windowFireLevels[i-1];
-          if (heatBelow > 30) change += (heatBelow - 30) * 0.008 * difficultyScaling;
+          if (heatBelow > 25) change += (heatBelow - 25) * 0.01 * difficultyScaling;
         }
         
         if (lvl > DAMAGE_THRESHOLD) {
@@ -221,12 +222,12 @@ const Game: React.FC<GameProps> = ({
           }
         }
 
-        if (lvl > 50 && Math.random() < 0.05) {
+        if (lvl > 50 && Math.random() < 0.08) {
           emberParticlesRef.current.push({
             x: b.x + Math.random() * b.width,
             y: CANVAS_HEIGHT - 50 - (i + 1) * 80 + 40,
-            vx: (Math.random() - 0.5) * 2,
-            vy: -1 - Math.random() * 2,
+            vx: (Math.random() - 0.5) * 2.5,
+            vy: -1.5 - Math.random() * 2.5,
             life: 1.0,
             size: 1 + Math.random() * 3
           });
@@ -249,51 +250,73 @@ const Game: React.FC<GameProps> = ({
       });
     });
 
-    emberParticlesRef.current.forEach(p => { p.x += p.vx + Math.sin(Date.now()/500); p.y += p.vy; p.life -= 0.01; });
+    emberParticlesRef.current.forEach(p => { p.x += p.vx + Math.sin(Date.now()/500); p.y += p.vy; p.life -= 0.015; });
     emberParticlesRef.current = emberParticlesRef.current.filter(p => p.life > 0);
 
     rubbleParticlesRef.current.forEach(p => { 
-      p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.rotation += p.vr; p.life -= 0.005; 
+      p.x += p.vx; p.y += p.vy; p.vy += 0.3; p.rotation += p.vr; p.life -= 0.005; 
       if (p.y > CANVAS_HEIGHT - 50) { p.y = CANVAS_HEIGHT - 50; p.vy = 0; p.vx = 0; p.vr = 0; }
     });
     rubbleParticlesRef.current = rubbleParticlesRef.current.filter(p => p.life > 0);
 
-    const totalFirePower = buildingsRef.current.reduce((acc, b) => acc + b.windowFireLevels.reduce((f, l) => f + (l > 15 ? 1 : 0), 0), 0);
-    const spawnChance = (totalFirePower * 0.002) * difficultyScaling;
+    const totalFirePower = buildingsRef.current.reduce((acc, b) => acc + b.windowFireLevels.reduce((f, l) => f + (l > 10 ? 1 : 0), 0), 0);
+    // Jumper spawn chance now also depends heavily on difficulty scaling
+    const spawnChance = (totalFirePower * 0.0025) * difficultyScaling;
     if (Math.random() < spawnChance) spawnJumper();
     if (Math.random() < POWERUP_SPAWN_CHANCE) spawnPowerUp();
 
-    const processPlayer = (idx: number, leftKey: string, rightKey: string, actionKey: string) => {
+    const processPlayer = (idx: number, leftKeys: string[], rightKeys: string[], actionKeys: string[]) => {
       const s = stretchersRef.current[idx];
       const speed = activeEffectsRef.current.speed > 0 ? STRETCHER_SPEED * 1.6 : STRETCHER_SPEED;
       
-      const moveLeft = keysRef.current.has(leftKey);
-      const moveRight = keysRef.current.has(rightKey);
-      const sprayWater = keysRef.current.has(actionKey);
+      const moveLeft = leftKeys.some(k => keysRef.current.has(k));
+      const moveRight = rightKeys.some(k => keysRef.current.has(k));
+      const sprayWater = actionKeys.some(k => keysRef.current.has(k));
 
       if (moveLeft) s.x = Math.max(0, s.x - speed);
       if (moveRight) s.x = Math.min(CANVAS_WIDTH - s.width, s.x + speed);
       
       if (sprayWater) {
-        const count = activeEffectsRef.current.water > 0 ? 10 : 6;
+        const count = activeEffectsRef.current.water > 0 ? 12 : 7;
         for (let i = 0; i < count; i++) {
           waterParticlesRef.current.push({
             x: s.x + s.width / 2, y: CANVAS_HEIGHT - 65,
-            vx: (Math.random() - 0.5) * (activeEffectsRef.current.water > 0 ? 10 : 7),
-            vy: -15 - Math.random() * 8, life: 1.0
+            vx: (Math.random() - 0.5) * (activeEffectsRef.current.water > 0 ? 12 : 8),
+            vy: -16 - Math.random() * 10, life: 1.0
           });
         }
       }
 
       if (s.x + s.width > AMBULANCE_X && s.occupants > 0) {
-        internalScoreRef.current += s.occupants * (15 + internalLevelRef.current * 5);
+        const count = s.occupants;
+        internalScoreRef.current += count * (15 + internalLevelRef.current * 10);
         setScore(internalScoreRef.current);
+        
+        rescuedInLevelRef.current += count;
         s.occupants = 0;
+        
+        const currentGoal = getLevelGoal(internalLevelRef.current);
+        window.dispatchEvent(new CustomEvent('update-goal', { 
+          detail: { current: rescuedInLevelRef.current, goal: currentGoal } 
+        }));
+
+        if (rescuedInLevelRef.current >= currentGoal) {
+          internalLevelRef.current += 1;
+          rescuedInLevelRef.current = 0;
+          setLevel(internalLevelRef.current);
+          window.dispatchEvent(new CustomEvent('update-goal', { 
+            detail: { current: 0, goal: getLevelGoal(internalLevelRef.current) } 
+          }));
+        }
       }
     };
 
-    processPlayer(0, 'KeyA', 'KeyD', 'KeyW'); 
-    if (settings.isMultiplayer) processPlayer(1, 'ArrowLeft', 'ArrowRight', 'Space');
+    if (!settings.isMultiplayer) {
+      processPlayer(0, ['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight'], ['KeyW', 'ArrowUp', 'Space']);
+    } else {
+      processPlayer(0, ['KeyA'], ['KeyD'], ['KeyW']);
+      processPlayer(1, ['ArrowLeft'], ['ArrowRight'], ['Space']);
+    }
 
     powerUpsRef.current.forEach(p => {
       p.y += p.vy;
@@ -308,7 +331,7 @@ const Game: React.FC<GameProps> = ({
     powerUpsRef.current = powerUpsRef.current.filter(p => p.y < CANVAS_HEIGHT);
 
     waterParticlesRef.current.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.35; p.life -= 0.035;
+      p.x += p.vx; p.y += p.vy; p.vy += 0.4; p.life -= 0.035;
       buildingsRef.current.forEach(b => {
         if (p.x > b.x && p.x < b.x + b.width) {
           const fIdx = Math.floor(((CANVAS_HEIGHT - 50) - p.y) / 80);
@@ -335,7 +358,7 @@ const Game: React.FC<GameProps> = ({
           }
         });
         if (j.y > CANVAS_HEIGHT - 55) {
-          if (j.hasShield) { j.hasShield = false; j.vy = -13; j.y = CANVAS_HEIGHT - 60; }
+          if (j.hasShield) { j.hasShield = false; j.vy = -14; j.y = CANVAS_HEIGHT - 60; }
           else if (j.y > CANVAS_HEIGHT) {
             j.state = 'dead'; j.lingerTimer = INDICATOR_DURATION;
             internalLivesRef.current -= 1; setLives(internalLivesRef.current);
@@ -348,14 +371,14 @@ const Game: React.FC<GameProps> = ({
   }, [gameState, settings, setScore, setLevel, setLives, setGameState, spawnJumper, spawnPowerUp]);
 
   const drawFire = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, intensity: number, time: number) => {
-    if (intensity <= 5) return;
+    if (intensity <= 3) return;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     const flicker = Math.sin(time / 60 + x) * 8;
-    const baseHeight = (h * (0.55 + intensity / 80) + flicker);
+    const baseHeight = (h * (0.5 + intensity / 80) + flicker);
     const grad = ctx.createLinearGradient(x, y + h/2, x, y - baseHeight);
-    grad.addColorStop(0, 'rgba(255, 40, 0, 0.9)');
-    grad.addColorStop(0.4, 'rgba(255, 170, 0, 0.7)');
+    grad.addColorStop(0, 'rgba(255, 30, 0, 0.9)');
+    grad.addColorStop(0.4, 'rgba(255, 150, 0, 0.7)');
     grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -375,11 +398,10 @@ const Game: React.FC<GameProps> = ({
       const destroyed = b.isFloorDestroyed[f];
       
       if (!destroyed) {
-        // Visual indicator: Shaking effect for floors with high damage or active intense fire
         let offsetX = 0;
         let offsetY = 0;
         if (damage > 35 || fireLevel > DAMAGE_THRESHOLD) {
-          const shakeMag = (damage / 12) + (fireLevel > DAMAGE_THRESHOLD ? (fireLevel - DAMAGE_THRESHOLD) / 5 : 0);
+          const shakeMag = (damage / 10) + (fireLevel > DAMAGE_THRESHOLD ? (fireLevel - DAMAGE_THRESHOLD) / 3 : 0);
           offsetX = (Math.random() - 0.5) * shakeMag;
           offsetY = (Math.random() - 0.5) * shakeMag;
         }
@@ -388,27 +410,22 @@ const Game: React.FC<GameProps> = ({
         ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
         
         if (damage > 0) {
-          // Visual indicator: Persistent scorched darkening
           ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.85, damage / 90)})`;
           ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
           
-          // Visual indicator: Structural red pulsing glow when damage is critical
           if (damage > 65) {
             const glowVal = (Math.sin(time / 140) * 0.25) + 0.25;
             ctx.fillStyle = `rgba(255, 40, 0, ${glowVal})`;
             ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
           }
 
-          // Visual indicator: Cracks appearing and growing on the building face
           if (damage > 20) {
             ctx.strokeStyle = `rgba(0, 0, 0, ${0.4 + (damage / 100)})`;
-            ctx.lineWidth = 1 + (damage / 25);
+            ctx.lineWidth = 1 + (damage / 20);
             ctx.beginPath();
-            // Randomized crack lines
             ctx.moveTo(b.x + offsetX + 20, fy + offsetY + 15);
             ctx.lineTo(b.x + offsetX + 40, fy + offsetY + 50);
             if (damage > 55) ctx.lineTo(b.x + offsetX + 20, fy + offsetY + 85);
-            
             ctx.moveTo(b.x + b.width + offsetX - 25, fy + offsetY + 20);
             ctx.lineTo(b.x + b.width + offsetX - 60, fy + offsetY + 60);
             if (damage > 75) ctx.lineTo(b.x + b.width + offsetX - 20, fy + offsetY + 90);
@@ -418,7 +435,6 @@ const Game: React.FC<GameProps> = ({
 
         const winXPos = [b.x + 20, b.x + b.width - 50];
         winXPos.forEach(wx => {
-          // Window frames with critical damage glow
           if (damage > 75) {
             ctx.strokeStyle = `rgba(255, 0, 0, ${(Math.sin(time / 80) * 0.6) + 0.4})`;
             ctx.lineWidth = 2;
@@ -426,18 +442,17 @@ const Game: React.FC<GameProps> = ({
           }
           ctx.fillStyle = '#080808'; 
           ctx.fillRect(wx + offsetX, fy + 20 + offsetY, 30, 40);
-          if (fireLevel > 5) drawFire(ctx, wx + 15 + offsetX, fy + 35 + offsetY, 45, 40, fireLevel, time);
+          if (fireLevel > 3) drawFire(ctx, wx + 15 + offsetX, fy + 35 + offsetY, 45, 40, fireLevel, time);
         });
       } else {
-        // Floor is a charred remnant
         ctx.fillStyle = '#040404';
         ctx.fillRect(b.x, fy + floorHeight - 25, b.width, 25);
-        if (Math.random() < 0.2) {
+        if (Math.random() < 0.25) {
             emberParticlesRef.current.push({
                 x: b.x + Math.random() * b.width,
                 y: fy + floorHeight - 20,
-                vx: (Math.random() - 0.5) * 2.5,
-                vy: -Math.random() * 4,
+                vx: (Math.random() - 0.5) * 3,
+                vy: -Math.random() * 5,
                 life: 0.7 + Math.random() * 0.3,
                 size: 1 + Math.random() * 4
             });
@@ -462,7 +477,7 @@ const Game: React.FC<GameProps> = ({
 
     rubbleParticlesRef.current.forEach(p => {
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.globalAlpha = p.life;
-      ctx.fillStyle = '#222222'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore();
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore();
     });
 
     ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.roundRect(AMBULANCE_X, CANVAS_HEIGHT - 110, AMBULANCE_WIDTH, 60, 10); ctx.fill();
