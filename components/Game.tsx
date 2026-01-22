@@ -151,15 +151,15 @@ const Game: React.FC<GameProps> = ({
   }, []);
 
   const spawnRubble = (x: number, y: number, width: number) => {
-    for(let i=0; i<8; i++) {
+    for(let i=0; i<12; i++) {
       rubbleParticlesRef.current.push({
         x: x + Math.random() * width,
         y: y + Math.random() * 20,
-        vx: (Math.random() - 0.5) * 4,
-        vy: 2 + Math.random() * 5,
+        vx: (Math.random() - 0.5) * 6,
+        vy: -2 - Math.random() * 4,
         rotation: Math.random() * Math.PI * 2,
-        vr: (Math.random() - 0.5) * 0.2,
-        size: 5 + Math.random() * 10,
+        vr: (Math.random() - 0.5) * 0.4,
+        size: 4 + Math.random() * 12,
         life: 1.0
       });
     }
@@ -267,7 +267,6 @@ const Game: React.FC<GameProps> = ({
       const s = stretchersRef.current[idx];
       const speed = activeEffectsRef.current.speed > 0 ? STRETCHER_SPEED * 1.6 : STRETCHER_SPEED;
       
-      // Determine movement based on keysRef
       const moveLeft = keysRef.current.has(leftKey) || (idx === 0 && keysRef.current.has('ArrowLeft'));
       const moveRight = keysRef.current.has(rightKey) || (idx === 0 && keysRef.current.has('ArrowRight'));
       const sprayWater = keysRef.current.has(actionKey) || (idx === 0 && keysRef.current.has('Space'));
@@ -293,7 +292,7 @@ const Game: React.FC<GameProps> = ({
       }
     };
 
-    processPlayer(0, 'KeyA', 'KeyD', 'KeyW'); // WASD support as per spec for desktop/mobile consistency
+    processPlayer(0, 'KeyA', 'KeyD', 'KeyW'); 
     if (settings.isMultiplayer) processPlayer(1, 'ArrowLeft', 'ArrowRight', 'Space');
 
     powerUpsRef.current.forEach(p => {
@@ -376,42 +375,71 @@ const Game: React.FC<GameProps> = ({
       const destroyed = b.isFloorDestroyed[f];
       
       if (!destroyed) {
+        // Shaking logic: increases with structural damage and fire level
         let offsetX = 0;
         let offsetY = 0;
-        if (fireLevel > DAMAGE_THRESHOLD) {
-          const trembleAmount = (fireLevel - DAMAGE_THRESHOLD) / 8;
-          offsetX = (Math.random() - 0.5) * trembleAmount;
-          offsetY = (Math.random() - 0.5) * trembleAmount;
+        if (damage > 30 || fireLevel > DAMAGE_THRESHOLD) {
+          const shakeIntensity = (damage / 15) + (fireLevel > DAMAGE_THRESHOLD ? (fireLevel - DAMAGE_THRESHOLD) / 5 : 0);
+          offsetX = (Math.random() - 0.5) * shakeIntensity;
+          offsetY = (Math.random() - 0.5) * shakeIntensity;
         }
 
+        // Base building color with scorched effect (darkening as damage increases)
         ctx.fillStyle = b.color;
         ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
         
+        // Scorched Overlay
         if (damage > 0) {
-          ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.8, damage / 100)})`;
+          ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.85, damage / 90)})`;
           ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
           
-          if (damage > 40) {
-            ctx.strokeStyle = `rgba(0, 0, 0, ${damage / 150})`;
-            ctx.lineWidth = 1;
+          // Structural Glow: Red tint when damage is critical (>70%)
+          if (damage > 70) {
+            const glowAlpha = (Math.sin(time / 200) * 0.15) + 0.15;
+            ctx.fillStyle = `rgba(255, 0, 0, ${glowAlpha})`;
+            ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
+          }
+
+          // Dynamic Cracks appearing based on damage
+          if (damage > 25) {
+            ctx.strokeStyle = `rgba(0, 0, 0, ${0.3 + (damage / 100)})`;
+            ctx.lineWidth = 1 + (damage / 40);
             ctx.beginPath();
-            ctx.moveTo(b.x + offsetX + 10, fy + offsetY + 10);
-            ctx.lineTo(b.x + offsetX + 30, fy + offsetY + 40);
-            ctx.moveTo(b.x + b.width + offsetX - 10, fy + offsetY + 10);
-            ctx.lineTo(b.x + b.width + offsetX - 40, fy + offsetY + 50);
+            // Crack 1
+            ctx.moveTo(b.x + offsetX + 10, fy + offsetY + 5);
+            ctx.lineTo(b.x + offsetX + 25, fy + offsetY + 35);
+            if (damage > 50) ctx.lineTo(b.x + offsetX + 5, fy + offsetY + 60);
+            
+            // Crack 2
+            ctx.moveTo(b.x + b.width + offsetX - 15, fy + offsetY + 10);
+            ctx.lineTo(b.x + b.width + offsetX - 45, fy + offsetY + 50);
+            if (damage > 75) ctx.lineTo(b.x + b.width + offsetX - 10, fy + offsetY + 75);
+            
             ctx.stroke();
           }
         }
 
         const winXPos = [b.x + 20, b.x + b.width - 50];
         winXPos.forEach(wx => {
-          ctx.fillStyle = '#0a0a0a';
+          ctx.fillStyle = '#0a0a0a'; // Window frame
           ctx.fillRect(wx + offsetX, fy + 20 + offsetY, 30, 40);
           if (fireLevel > 5) drawFire(ctx, wx + 15 + offsetX, fy + 35 + offsetY, 45, 40, fireLevel, time);
         });
       } else {
-        ctx.fillStyle = '#222';
-        ctx.fillRect(b.x, fy + floorHeight - 10, b.width, 10);
+        // Destroyed floor: dark husk
+        ctx.fillStyle = '#111';
+        ctx.fillRect(b.x, fy + floorHeight - 15, b.width, 15);
+        // Small floating embers from destroyed floors
+        if (Math.random() < 0.1) {
+            emberParticlesRef.current.push({
+                x: b.x + Math.random() * b.width,
+                y: fy + floorHeight - 10,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: -Math.random() * 2,
+                life: 0.5 + Math.random() * 0.5,
+                size: 1 + Math.random() * 2
+            });
+        }
       }
     }
   };
