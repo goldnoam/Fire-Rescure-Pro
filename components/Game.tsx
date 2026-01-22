@@ -97,17 +97,17 @@ const Game: React.FC<GameProps> = ({
     const handleMove = (e: any) => {
       const { player, dir } = e.detail;
       if (player === 1) {
+        if (dir === 'left') keysRef.current.add('KeyA');
+        if (dir === 'right') keysRef.current.add('KeyD');
+        if (dir === 'action') keysRef.current.add('KeyW');
+        if (dir === 'stop') { keysRef.current.delete('KeyA'); keysRef.current.delete('KeyD'); }
+        if (dir === 'stopAction') keysRef.current.delete('KeyW');
+      } else {
         if (dir === 'left') keysRef.current.add('ArrowLeft');
         if (dir === 'right') keysRef.current.add('ArrowRight');
         if (dir === 'action') keysRef.current.add('Space');
         if (dir === 'stop') { keysRef.current.delete('ArrowLeft'); keysRef.current.delete('ArrowRight'); }
         if (dir === 'stopAction') keysRef.current.delete('Space');
-      } else {
-        if (dir === 'left') keysRef.current.add('KeyA');
-        if (dir === 'right') keysRef.current.add('KeyD');
-        if (dir === 'action') keysRef.current.add('ShiftLeft');
-        if (dir === 'stop') { keysRef.current.delete('KeyA'); keysRef.current.delete('KeyD'); }
-        if (dir === 'stopAction') keysRef.current.delete('ShiftLeft');
       }
     };
     window.addEventListener('game-move', handleMove);
@@ -151,15 +151,15 @@ const Game: React.FC<GameProps> = ({
   }, []);
 
   const spawnRubble = (x: number, y: number, width: number) => {
-    for(let i=0; i<12; i++) {
+    for(let i=0; i<15; i++) {
       rubbleParticlesRef.current.push({
         x: x + Math.random() * width,
         y: y + Math.random() * 20,
-        vx: (Math.random() - 0.5) * 6,
-        vy: -2 - Math.random() * 4,
+        vx: (Math.random() - 0.5) * 10,
+        vy: -4 - Math.random() * 8,
         rotation: Math.random() * Math.PI * 2,
-        vr: (Math.random() - 0.5) * 0.4,
-        size: 4 + Math.random() * 12,
+        vr: (Math.random() - 0.5) * 0.6,
+        size: 6 + Math.random() * 18,
         life: 1.0
       });
     }
@@ -253,7 +253,7 @@ const Game: React.FC<GameProps> = ({
     emberParticlesRef.current = emberParticlesRef.current.filter(p => p.life > 0);
 
     rubbleParticlesRef.current.forEach(p => { 
-      p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.rotation += p.vr; p.life -= 0.005; 
+      p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.rotation += p.vr; p.life -= 0.005; 
       if (p.y > CANVAS_HEIGHT - 50) { p.y = CANVAS_HEIGHT - 50; p.vy = 0; p.vx = 0; p.vr = 0; }
     });
     rubbleParticlesRef.current = rubbleParticlesRef.current.filter(p => p.life > 0);
@@ -267,20 +267,20 @@ const Game: React.FC<GameProps> = ({
       const s = stretchersRef.current[idx];
       const speed = activeEffectsRef.current.speed > 0 ? STRETCHER_SPEED * 1.6 : STRETCHER_SPEED;
       
-      const moveLeft = keysRef.current.has(leftKey) || (idx === 0 && keysRef.current.has('ArrowLeft'));
-      const moveRight = keysRef.current.has(rightKey) || (idx === 0 && keysRef.current.has('ArrowRight'));
-      const sprayWater = keysRef.current.has(actionKey) || (idx === 0 && keysRef.current.has('Space'));
+      const moveLeft = keysRef.current.has(leftKey);
+      const moveRight = keysRef.current.has(rightKey);
+      const sprayWater = keysRef.current.has(actionKey);
 
       if (moveLeft) s.x = Math.max(0, s.x - speed);
       if (moveRight) s.x = Math.min(CANVAS_WIDTH - s.width, s.x + speed);
       
       if (sprayWater) {
-        const count = activeEffectsRef.current.water > 0 ? 8 : 4;
+        const count = activeEffectsRef.current.water > 0 ? 10 : 6;
         for (let i = 0; i < count; i++) {
           waterParticlesRef.current.push({
             x: s.x + s.width / 2, y: CANVAS_HEIGHT - 65,
-            vx: (Math.random() - 0.5) * (activeEffectsRef.current.water > 0 ? 8 : 5),
-            vy: -13 - Math.random() * 6, life: 1.0
+            vx: (Math.random() - 0.5) * (activeEffectsRef.current.water > 0 ? 10 : 7),
+            vy: -15 - Math.random() * 8, life: 1.0
           });
         }
       }
@@ -308,7 +308,7 @@ const Game: React.FC<GameProps> = ({
     powerUpsRef.current = powerUpsRef.current.filter(p => p.y < CANVAS_HEIGHT);
 
     waterParticlesRef.current.forEach(p => {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.3; p.life -= 0.03;
+      p.x += p.vx; p.y += p.vy; p.vy += 0.35; p.life -= 0.035;
       buildingsRef.current.forEach(b => {
         if (p.x > b.x && p.x < b.x + b.width) {
           const fIdx = Math.floor(((CANVAS_HEIGHT - 50) - p.y) / 80);
@@ -328,7 +328,7 @@ const Game: React.FC<GameProps> = ({
         stretchersRef.current.forEach((s, idx) => {
           if (!settings.isMultiplayer && idx === 1) return;
           if (j.y + JUMPER_SIZE > CANVAS_HEIGHT - 65 && j.y + JUMPER_SIZE < CANVAS_HEIGHT - 35 &&
-              j.x > s.x - 15 && j.x < s.x + s.width + 15 && j.vy > 0) {
+              j.x > s.x - 20 && j.x < s.x + s.width + 20 && j.vy > 0) {
             if (s.occupants < s.maxOccupants) {
               s.occupants++; j.state = 'saved'; j.lingerTimer = INDICATOR_DURATION;
             } else { j.vy *= BOUNCE_FACTOR; j.y = CANVAS_HEIGHT - 67; }
@@ -375,69 +375,71 @@ const Game: React.FC<GameProps> = ({
       const destroyed = b.isFloorDestroyed[f];
       
       if (!destroyed) {
-        // Shaking logic: increases with structural damage and fire level
+        // Visual indicator: Shaking effect for floors with high damage or active intense fire
         let offsetX = 0;
         let offsetY = 0;
-        if (damage > 30 || fireLevel > DAMAGE_THRESHOLD) {
-          const shakeIntensity = (damage / 15) + (fireLevel > DAMAGE_THRESHOLD ? (fireLevel - DAMAGE_THRESHOLD) / 5 : 0);
-          offsetX = (Math.random() - 0.5) * shakeIntensity;
-          offsetY = (Math.random() - 0.5) * shakeIntensity;
+        if (damage > 35 || fireLevel > DAMAGE_THRESHOLD) {
+          const shakeMag = (damage / 12) + (fireLevel > DAMAGE_THRESHOLD ? (fireLevel - DAMAGE_THRESHOLD) / 5 : 0);
+          offsetX = (Math.random() - 0.5) * shakeMag;
+          offsetY = (Math.random() - 0.5) * shakeMag;
         }
 
-        // Base building color with scorched effect (darkening as damage increases)
         ctx.fillStyle = b.color;
         ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
         
-        // Scorched Overlay
         if (damage > 0) {
+          // Visual indicator: Persistent scorched darkening
           ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(0.85, damage / 90)})`;
           ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
           
-          // Structural Glow: Red tint when damage is critical (>70%)
-          if (damage > 70) {
-            const glowAlpha = (Math.sin(time / 200) * 0.15) + 0.15;
-            ctx.fillStyle = `rgba(255, 0, 0, ${glowAlpha})`;
+          // Visual indicator: Structural red pulsing glow when damage is critical
+          if (damage > 65) {
+            const glowVal = (Math.sin(time / 140) * 0.25) + 0.25;
+            ctx.fillStyle = `rgba(255, 40, 0, ${glowVal})`;
             ctx.fillRect(b.x + offsetX, fy + offsetY, b.width, floorHeight);
           }
 
-          // Dynamic Cracks appearing based on damage
-          if (damage > 25) {
-            ctx.strokeStyle = `rgba(0, 0, 0, ${0.3 + (damage / 100)})`;
-            ctx.lineWidth = 1 + (damage / 40);
+          // Visual indicator: Cracks appearing and growing on the building face
+          if (damage > 20) {
+            ctx.strokeStyle = `rgba(0, 0, 0, ${0.4 + (damage / 100)})`;
+            ctx.lineWidth = 1 + (damage / 25);
             ctx.beginPath();
-            // Crack 1
-            ctx.moveTo(b.x + offsetX + 10, fy + offsetY + 5);
-            ctx.lineTo(b.x + offsetX + 25, fy + offsetY + 35);
-            if (damage > 50) ctx.lineTo(b.x + offsetX + 5, fy + offsetY + 60);
+            // Randomized crack lines
+            ctx.moveTo(b.x + offsetX + 20, fy + offsetY + 15);
+            ctx.lineTo(b.x + offsetX + 40, fy + offsetY + 50);
+            if (damage > 55) ctx.lineTo(b.x + offsetX + 20, fy + offsetY + 85);
             
-            // Crack 2
-            ctx.moveTo(b.x + b.width + offsetX - 15, fy + offsetY + 10);
-            ctx.lineTo(b.x + b.width + offsetX - 45, fy + offsetY + 50);
-            if (damage > 75) ctx.lineTo(b.x + b.width + offsetX - 10, fy + offsetY + 75);
-            
+            ctx.moveTo(b.x + b.width + offsetX - 25, fy + offsetY + 20);
+            ctx.lineTo(b.x + b.width + offsetX - 60, fy + offsetY + 60);
+            if (damage > 75) ctx.lineTo(b.x + b.width + offsetX - 20, fy + offsetY + 90);
             ctx.stroke();
           }
         }
 
         const winXPos = [b.x + 20, b.x + b.width - 50];
         winXPos.forEach(wx => {
-          ctx.fillStyle = '#0a0a0a'; // Window frame
+          // Window frames with critical damage glow
+          if (damage > 75) {
+            ctx.strokeStyle = `rgba(255, 0, 0, ${(Math.sin(time / 80) * 0.6) + 0.4})`;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(wx + offsetX - 3, fy + 17 + offsetY, 36, 46);
+          }
+          ctx.fillStyle = '#080808'; 
           ctx.fillRect(wx + offsetX, fy + 20 + offsetY, 30, 40);
           if (fireLevel > 5) drawFire(ctx, wx + 15 + offsetX, fy + 35 + offsetY, 45, 40, fireLevel, time);
         });
       } else {
-        // Destroyed floor: dark husk
-        ctx.fillStyle = '#111';
-        ctx.fillRect(b.x, fy + floorHeight - 15, b.width, 15);
-        // Small floating embers from destroyed floors
-        if (Math.random() < 0.1) {
+        // Floor is a charred remnant
+        ctx.fillStyle = '#040404';
+        ctx.fillRect(b.x, fy + floorHeight - 25, b.width, 25);
+        if (Math.random() < 0.2) {
             emberParticlesRef.current.push({
                 x: b.x + Math.random() * b.width,
-                y: fy + floorHeight - 10,
-                vx: (Math.random() - 0.5) * 1.5,
-                vy: -Math.random() * 2,
-                life: 0.5 + Math.random() * 0.5,
-                size: 1 + Math.random() * 2
+                y: fy + floorHeight - 20,
+                vx: (Math.random() - 0.5) * 2.5,
+                vy: -Math.random() * 4,
+                life: 0.7 + Math.random() * 0.3,
+                size: 1 + Math.random() * 4
             });
         }
       }
@@ -460,7 +462,7 @@ const Game: React.FC<GameProps> = ({
 
     rubbleParticlesRef.current.forEach(p => {
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.globalAlpha = p.life;
-      ctx.fillStyle = '#333'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore();
+      ctx.fillStyle = '#222222'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore();
     });
 
     ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.roundRect(AMBULANCE_X, CANVAS_HEIGHT - 110, AMBULANCE_WIDTH, 60, 10); ctx.fill();
